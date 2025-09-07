@@ -1,9 +1,10 @@
 # app.py
 # -----------------------------------------------------------------------------
 # Author:             Converted from R Shiny app by Albert Kuo
-# Date last modified: Sep 4, 2025
 #
 # Plotly Dash app for PEP risk prediction using gradient boosting
+
+##### THIS IS THE LAST VERSION WITH DOT PLOTS AND LIME GRAPH. NEXT WILL BE A BAR GRAPH FOR DISPLAY ONLY #####
 
 import dash
 from dash import dcc, html, Input, Output, State, callback_context
