@@ -1,0 +1,7 @@
+data
+data/*
+*/data
+publication/
+__pycache__
+.env
+.DS_Store
