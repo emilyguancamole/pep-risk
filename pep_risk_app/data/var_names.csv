@@ -1,0 +1,23 @@
+variable,var_label
+age_years,Age
+gender_male_1,Sex
+bmi,BMI
+sod,Sphincter of oddi dysfunction
+history_of_pep,History of PEP
+hx_of_recurrent_pancreatitis,History of recurrent pancreatitis
+pancreatic_sphincterotomy,Pancreatic sphincterotomy
+precut_sphincterotomy,Precut sphincterotomy
+minor_papilla_sphincterotomy,Minor papilla sphincterotomy
+failed_cannulation,Failed cannulation
+difficult_cannulation,Difficult cannulation
+pneumatic_dilation_of_intact_biliary_sphincter,Pneumatic dilation of intact biliary sphincter
+pancreatic_duct_injection,Pancreatic duct injection
+pancreatic_duct_injections_2,Pancreatic duct injections > 2
+acinarization,Acinarization
+trainee_involvement,Trainee involvement
+cholecystectomy,Cholecystectomy
+pancreo_biliary_malignancy,Pancreo biliary malignancy
+guidewire_cannulation,Guidewire cannulation
+guidewire_passage_into_pancreatic_duct,Guidewire passage into pancreatic duct
+guidewire_passage_into_pancreatic_duct_2,Guidewire passage into pancreatic duct > 2
+biliary_sphincterotomy,Biliary sphincterotomy

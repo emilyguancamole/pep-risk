@@ -1,0 +1,26 @@
+feature,feature_desc,weight,abs_weight,feature_label
+age_years,age_years <= -0.69,0.07777054406446919,0.07777054406446919,Age
+pneumatic_dilation_of_intact_biliary_sphincter,pneumatic_dilation_of_intact_biliary_sphincter <= -0.13,-0.05915412518905662,0.05915412518905662,Pneumatic dilation of intact biliary sphincter
+difficult_cannulation,difficult_cannulation <= -0.64,-0.039989053070097806,0.039989053070097806,Difficult cannulation
+history_of_pep,history_of_pep > -0.21,0.036077102136925644,0.036077102136925644,History of PEP
+acinarization,acinarization <= -0.18,-0.034102978941091724,0.034102978941091724,Acinarization
+pancreo_biliary_malignancy,pancreo_biliary_malignancy <= -0.31,-0.02958537993406687,0.02958537993406687,Pancreo biliary malignancy
+guidewire_passage_into_pancreatic_duct_2,guidewire_passage_into_pancreatic_duct_2 > 0.34,0.029470477107071142,0.029470477107071142,Guidewire passage into pancreatic duct > 2
+0.37,0.37 < biliary_sphincterotomy <= 0.60,-0.02581600620665983,0.02581600620665983,0.37
+gender_male_1,gender_male_1 <= -0.83,0.024523550272134945,0.024523550272134945,Sex
+cholecystectomy,cholecystectomy <= -0.60,-0.021902490751512158,0.021902490751512158,Cholecystectomy
+failed_cannulation,failed_cannulation > -0.23,0.017113068216106576,0.017113068216106576,Failed cannulation
+precut_sphincterotomy,precut_sphincterotomy <= -0.37,-0.01627699458296322,0.01627699458296322,Precut sphincterotomy
+pancreatic_duct_injection,pancreatic_duct_injection <= -0.51,-0.01468039205835909,0.01468039205835909,Pancreatic duct injection
+sod,sod > -0.46,0.013331773840964402,0.013331773840964402,Sphincter of oddi dysfunction
+minor_papilla_sphincterotomy,minor_papilla_sphincterotomy > -0.27,0.010013187075205385,0.010013187075205385,Minor papilla sphincterotomy
+aggressive_hydration,aggressive_hydration <= -0.31,0.008277362458193301,0.008277362458193301,aggressive_hydration
+pancreatic_duct_injections_2,pancreatic_duct_injections_2 <= -0.27,0.008027083417631,0.008027083417631,Pancreatic duct injections > 2
+pancreatic_sphincterotomy,pancreatic_sphincterotomy > -0.43,0.007185225640704766,0.007185225640704766,Pancreatic sphincterotomy
+guidewire_passage_into_pancreatic_duct,guidewire_passage_into_pancreatic_duct > -0.12,-0.005592358548478593,0.005592358548478593,Guidewire passage into pancreatic duct
+pancreatic_duct_stent_placement,pancreatic_duct_stent_placement > -0.54,-0.005378711150064516,0.005378711150064516,pancreatic_duct_stent_placement
+-0.59,-0.59 < trainee_involvement <= 1.68,0.002407286551426048,0.002407286551426048,-0.59
+-0.23,-0.23 < bmi <= 0.26,-0.0019217243475947586,0.0019217243475947586,-0.23
+hx_of_recurrent_pancreatitis,hx_of_recurrent_pancreatitis > -0.33,0.0004652511469136725,0.0004652511469136725,History of recurrent pancreatitis
+-1.47,-1.47 < indomethacin_nsaid_prophylaxis <= 0.68,-5.07790029646882e-05,5.07790029646882e-05,-1.47
+guidewire_cannulation,guidewire_cannulation <= 0.26,0.0,0.0,Guidewire cannulation
