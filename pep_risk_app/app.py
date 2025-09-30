@@ -4,8 +4,6 @@
 #
 # Plotly Dash app for PEP risk prediction using gradient boosting
 
-##### THIS IS THE LAST VERSION WITH DOT PLOTS AND LIME GRAPH. NEXT WILL BE A BAR GRAPH FOR DISPLAY ONLY #####
-
 import dash
 from dash import dcc, html, Input, Output, State, callback_context
 import dash_bootstrap_components as dbc
@@ -81,18 +79,20 @@ app.layout = html.Div([
         href="https://fonts.googleapis.com/css?family=Roboto:400,700&display=swap",
         rel="stylesheet"
     ),
-    dcc.Tabs(id="tabs", value="estimator", children=[
-        dcc.Tab(
-            label="Estimator", value="estimator",
-            style={'fontWeight': 'bold', 'padding':'6px', 'color': '#333'},
-            selected_style={'background': "#3697ff", 'padding':'6px', 'color': 'white', 'fontWeight': 'bold'}
-        ),
-        dcc.Tab(
-            label="About", value="about",
-            style={'fontWeight': 'bold', 'padding':'6px', 'color': '#333'},
-            selected_style={'background': "#3697ff", 'padding':'6px', 'color': 'white', 'fontWeight': 'bold'}
-        )
-    ]),
+    html.Div(
+        dcc.Tabs(id="tabs", value="estimator", children=[
+            dcc.Tab(
+                label="Estimator", value="estimator",
+                style={'fontWeight': 'bold', 'padding':'6px', 'color': '#333'},
+                selected_style={'border': "4px solid #3697ff", 'padding':'6px', 'fontWeight': 'bold'}
+            ),
+            dcc.Tab(
+                label="About", value="about",
+                style={'fontWeight': 'bold', 'padding':'6px', 'color': '#333'},
+                selected_style={'border': "4px solid #3697ff", 'padding':'6px', 'fontWeight': 'bold'}
+            )
+        ]), style={'width': '512px'}
+    ),
     html.Div(id="tab-content")
 ], style={'fontFamily': 'Roboto, Arial, sans-serif'})
 
@@ -118,7 +118,6 @@ def create_risk_factor_inputs():
             dbc.Input(
                 id="age_years",
                 type="number",
-                value=50,
                 min=0,
                 max=120,
                 step=1
@@ -131,7 +130,6 @@ def create_risk_factor_inputs():
             dbc.Input(
                 id="bmi",
                 type="number",
-                value=25,
                 min=10,
                 max=60,
                 step=0.1
@@ -169,7 +167,7 @@ def create_risk_factor_inputs():
                 color="primary",
                 size="lg",
                 className="me-2",
-                style={'margin-top': '25px'}
+                style={'margin-top': '10px'}
             )
         ])
     ]
@@ -192,35 +190,35 @@ def create_main_estimator_layout():
         # Risk factors input column
         dbc.Col([
             dbc.Card([
-                dbc.CardHeader(html.H4("Risk factors")),
+                dbc.CardHeader(html.H3("Risk factors")),
                 dbc.CardBody(create_risk_factor_inputs())
             ])
         ], style={'width': '15%', 'padding': '20px', 'background-color': '#f8f9fa'}),
 
         # Main results column
         dbc.Col([
-            html.H3("Post ERCP Pancreatitis Risk Calculator and Decision Making Tool", style={'margin-top': '20px'}),
+            html.H1("Post-ERCP Pancreatitis Risk Calculator", style={'margin-top': '35px', 'margin-bottom':'10px', 'text-align': 'center'}), 
             html.Br(),
-            html.Div(id="pep_pred_summary", style={'font-size': '14pt', 'margin-bottom': '20px'}),
             html.P([
-                html.Span("Quick Guide: ", style={'font-weight': 'bold'}),
-                "The predicted risk of developing PEP for the patient is labelled in ",
-                html.Span("yellow", style={'background-color': '#FFFF00'}),
-                " and plotted below.",# The patient's 20 nearest neighbors from our dataset are also plotted with their predicted risk and actual PEP outcome, where ",
-                # html.Span("red", style={'color': '#D55E00'}),
-                # " indicates they developed PEP and ",
-                # html.Span("blue", style={'color': '#56B4E9'}),
-                " indicates they did not develop PEP. "
-                "The contributions of each factor in increasing or decreasing the patient's risk are estimated with LIME weights below. "
-                "To aid in decision making, we also provide the predicted risk under different treatment options."
+                html.Span(
+                    "This tool calculates a patient's risk of developing pancreatitis after the ERCP procedure. To aid in decision making, it also provides the predicted risk under different treatment options.",
+                    style={
+                        'font-size': '14pt',
+                        'padding': '20px',
+                        'display': 'inline-block',
+                        'width': '90%',
+                        'background': '#f5f7fa',
+                        'border-radius': '8px',
+                        'margin-bottom': '10px',
+                        'margin-top': '1px',
+                        'margin-right': '65px',
+                    }
+                ),
             ]),
-            html.Br(),
-            dbc.Row([
-                dbc.Col([dcc.Graph(id="votes_plot")], width=5), # widths of the two plots
-                dbc.Col([dcc.Graph(id="lime_plot")], width=7)
-            ]),
-            html.Div(style={'marginBottom': '1px', 'marginTop': '1px'}), # Small spacer between plots
-            dcc.Graph(id="votes_trt_plot", style={'marginTop': '0px'}),
+            # html.Br(),
+            html.Div(id="pep_pred_summary", style={'font-size': '16pt', 'margin-bottom': '10px', 'margin-top': '10px'}),
+            html.Div(style={'marginBottom': '1px', 'marginTop': '1px'}), # small spacer between plots
+            dcc.Graph(id="votes_trt_plot", style={'marginTop': '0px'}), # layout of treatment plot
         ], width=9)
     ])
 
@@ -255,6 +253,7 @@ def render_tab_content(active_tab):
     elif active_tab == 'about':
         return create_about_layout()
 
+# todo review how data is input into model
 def create_input_dataframe(age_years, gender_male_1, bmi, sod, history_of_pep, 
                           hx_of_recurrent_pancreatitis, pancreatic_sphincterotomy,
                           precut_sphincterotomy, minor_papilla_sphincterotomy,
@@ -396,6 +395,7 @@ def predict_with_therapy_adjustment(input_df_normalized):
     
     return pd.DataFrame(predictions)
 
+# todo this isn't used?
 def find_nearest_neighbors(input_df_normalized, n_neighbors=20):
     """Find nearest neighbors for each therapy group"""
     neighbors_data = []
@@ -567,11 +567,11 @@ def create_lime_explanation(input_df_normalized):
         except:
             return None
 
-# Main callback for predictions and plots
+# Main callback for predictions and plots. Called whenever these values change.
 @app.callback(
     [Output('pep_pred_summary', 'children'),
-     Output('votes_plot', 'figure'),
-     Output('lime_plot', 'figure'), 
+    #  Output('votes_plot', 'figure'),
+    #  Output('lime_plot', 'figure'), 
      Output('votes_trt_plot', 'figure')],
     [Input('update_button', 'n_clicks')],
     [State('age_years', 'value'),
@@ -608,17 +608,30 @@ def update_predictions(n_clicks, age_years, gender_male_1, bmi, sod, history_of_
                       guidewire_passage_into_pancreatic_duct,
                       guidewire_passage_into_pancreatic_duct_2,
                       biliary_sphincterotomy):
-    
-    if n_clicks == 0:
-        # Return default/empty plots
+
+    if n_clicks == 0 or n_clicks is None:
+        # Return default/empty plots - only return as many values as there are outputs
         empty_fig = go.Figure()
-        empty_fig.update_layout(title="Click Submit to generate predictions")
-        return "Click Submit to see predictions", empty_fig, empty_fig, empty_fig
+        empty_fig.update_layout(
+            title={
+                'text': "Predicted risk of PEP with treatment",
+                'font': {'size': 24},
+            },
+            xaxis_title="",
+            yaxis_title="Probability of developing PEP",
+            yaxis=dict(tickformat='.0%', range=[0, 0.2]),
+            xaxis=dict(showticklabels=False, range=[-0.5, 0.5]),
+            height=800,
+            width=1400,
+            legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),
+            margin=dict(t=60, b=40, l=40, r=40)
+        )
+        return "", empty_fig
     
     try:
         print(f"DEBUG: Starting prediction process...")
         
-        # Handle None values by setting defaults
+        #! Handle None values by setting defaults
         age_years = age_years or 65
         gender_male_1 = gender_male_1 if gender_male_1 is not None else 1
         bmi = bmi or 25
@@ -677,33 +690,56 @@ def update_predictions(n_clicks, age_years, gender_male_1, bmi, sod, history_of_
         
         # Get nearest neighbors
         neighbors_df = find_nearest_neighbors(input_df_normalized)
-        print(f"DEBUG: Nearest neighbors found")
+        # print(f"DEBUG: Nearest neighbors found")
         
         # Create LIME explanation
-        lime_df = create_lime_explanation(input_df_normalized)
+        # lime_df = create_lime_explanation(input_df_normalized)
         # print(f"DEBUG: LIME explanation created")
         
         # Create summary text
         no_treatment_pred = predictions_df[predictions_df['therapy'] == 'No treatment']['prediction'].iloc[0]
         summary_text = html.Div([
-            html.B(f"Based on the input risk factors for the patient, the risk of developing PEP without prophylaxis is {no_treatment_pred*100:.1f}%.")
-        ])
+            html.Div([
+                html.Div(f"{no_treatment_pred*100:.1f}%", 
+                        style={'font-size': '24px', 'font-weight': 'bold', 'margin-bottom': '5px'}),
+                html.Div("Predicted risk of PEP without prophylaxis", 
+                        style={'font-size': '15px'})
+            ], style={
+                'background-color': '#007bff',
+                'color': 'white',
+                'padding': '15px',
+                'border-radius': '15px',
+                'text-align': 'center',
+                'display': 'inline-block',
+                'margin': '5px'
+            })
+        ], style={'text-align': 'center', 'padding': '2px'})
         
         # Create plots
-        votes_fig = create_votes_plot(predictions_df, neighbors_df, "No treatment")
-        lime_fig = create_lime_plot(lime_df)
+        # votes_fig = create_votes_plot(predictions_df, neighbors_df, "No treatment")
+        # lime_fig = create_lime_plot(lime_df)
         treatment_fig = create_treatment_plot(predictions_df, neighbors_df)
         
         print(f"DEBUG: All plots created successfully")
-        return summary_text, votes_fig, lime_fig, treatment_fig
+        return summary_text, treatment_fig #votes_fig, lime_fig, 
         
     except Exception as e:
         print(f"ERROR: {str(e)}")
         import traceback
         traceback.print_exc()
         error_fig = go.Figure()
-        error_fig.update_layout(title=f"Error: {str(e)}")
-        return f"Error in prediction: {str(e)}", error_fig, error_fig, error_fig
+        error_fig.update_layout(
+            title=f"Error: {str(e)}",
+            xaxis_title="",
+            yaxis_title="Probability of developing PEP",
+            yaxis=dict(tickformat='.0%', range=[0, 0.2]),
+            xaxis=dict(showticklabels=False, range=[-0.5, 0.5]),
+            height=800,
+            width=1400,
+            legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),
+            margin=dict(t=40, b=40, l=40, r=40)
+        )
+        return f"Error in prediction: {str(e)}", error_fig
 
 def create_votes_plot(predictions_df, neighbors_df, therapy_filter):
     """Create the votes plot for specified therapy"""
@@ -778,7 +814,7 @@ def create_votes_plot(predictions_df, neighbors_df, therapy_filter):
         yaxis_title="Probability of developing PEP",
         yaxis=dict(tickformat='.0%', range=[0, y_max]),
         xaxis=dict(showticklabels=False, range=[-0.5, 0.5]),
-        height=400,
+        height=370,
         legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),
         margin=dict(t=40, b=40, l=40, r=40) # margins between plot and edges
     )
@@ -915,32 +951,42 @@ def create_treatment_plot(predictions_df, neighbors_df):
             patient_text.append(f"{pred_val*100:.1f}%")
     
     if patient_x:
-        fig.add_trace(go.Scatter(
+        fig.add_trace(go.Bar(
             x=patient_x,
             y=patient_y,
-            mode='markers+text',
-            marker=dict(color='yellow', size=12, line=dict(color='black', width=2)),
+            marker=dict(color='blue', line=dict(color='black', width=2)),
             name='Patient predictions',
             text=patient_text,
-            textposition="top center",
-            textfont=dict(size=10, color='black'),
+            textposition="outside",
+            textfont=dict(size=14, color='black'),
             showlegend=False
         ))
     
     fig.update_layout(
-        title="Predicted risk of PEP with treatment",
-        xaxis_title="Treatment Option",
-        yaxis_title="Probability of developing PEP",
-        yaxis=dict(tickformat='.0%'),
+        title={
+            'text': "Predicted risk of PEP with treatment",
+            'font': {'size': 24},
+        },
+        xaxis_title={"text":"Treatment", 'font':{'size': 16}},
+        yaxis_title={"text":"Probability of developing PEP", 'font':{'size': 16}},
+        yaxis=dict(
+            tickformat='.0%',
+            range=[0, 0.3],         # y-axis from 0 to 0.3
+            tickvals=[0, 0.1, 0.2, 0.3],
+            ticktext=['0%', '10%', '20%', '30%'],
+            tickfont=dict(size=16),
+        ),
         xaxis=dict(
             tickmode='array',
             tickvals=list(range(len(therapy_order))),
             ticktext=therapy_order,
-            tickangle=45
+            # tickangle=45,
+            tickfont=dict(size=16),
         ),
-        height=500,
+        height=800,
+        width=1400,
         legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),
-        margin=dict(t=40, b=40, l=40, r=40) # margins between plot and edges
+        margin=dict(t=65, b=40, l=40, r=40) # margins between plot and edges
     )
     
     return fig

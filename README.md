@@ -1,6 +1,6 @@
 # pep_risk
 
-This project builds a prediction model for PEP (post-ERCP pancreatitis). The Shiny app provides a real-time estimation of the risk of PEP for a given patient.
+This project builds a prediction model for PEP (post-ERCP pancreatitis). The Dash app provides a real-time estimation of the risk of PEP for a given patient.
 
 **Repo organization:**
 

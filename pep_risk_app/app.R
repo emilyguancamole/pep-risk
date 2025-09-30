@@ -293,13 +293,14 @@ ui <- navbarPage("", id = "navbar",
 # Define server logic required for plots
 server <- function(input, output, session) {
   # Read in data output from pred_model.Rmd
-  fit = readRDS("data/gbm_model.rds")     # Model on full dataset
+  fit = readRDS("data/gbm_model.rds")     # Model on full dataset ********************why was this commented out in pred_model.Rmd???
   fit_sub = readRDS("data/gbm_model_trt.rds") # Model on trt subsets
   train = readRDS("data/train_new.rds")   # Training dataset (unnormalized)
   train_impute = readRDS("data/train_impute.rds") # Imputed and normalized training dataset
   var_names = readRDS("data/var_names.rds") # Variable labels
   lime_explainer = readRDS("data/lime_explainer.rds") # LIME explainer for variable importance
-  # pred_dt = readRDS("data/pred_dt_gbm.rds") # Prediction scores for training set
+  # pred_dt = readRDS("data/pred_dt_gbm.rds") # Prediction scores for training set **was commented out here, not used elsewhere in this file
+                                                                #***why was this the only uncommented saved rds in pred_model??
   n_k = 20 # Number of nearest neighbors
 
   # Wait for submit button before refreshing plots
@@ -324,7 +325,7 @@ server <- function(input, output, session) {
                            bmi = input$bmi,
                            sod = as.integer(input$sod),
                            history_of_pep = as.integer(input$history_of_pep),
-                           hx_of_recurrent_pancreatitis = as.integer(input$history_of_pep),
+                           hx_of_recurrent_pancreatitis = as.integer(input$history_of_pep), #?? all set to input$history_of_pep?
                            pancreatic_sphincterotomy = as.integer(input$history_of_pep),
                            precut_sphincterotomy = as.integer(input$precut_sphincterotomy),
                            minor_papilla_sphincterotomy = as.integer(input$minor_papilla_sphincterotomy),
