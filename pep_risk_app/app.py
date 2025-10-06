@@ -12,8 +12,10 @@ import plotly.graph_objects as go
 import pandas as pd
 import numpy as np
 import pickle
+import joblib
 import os
 from sklearn.preprocessing import StandardScaler
+from sklearn.impute import KNNImputer
 from sklearn.neighbors import NearestNeighbors
 import lime
 import lime.lime_tabular
@@ -30,8 +32,7 @@ def load_models_and_data():
     data_dir = "data"
     
     # Load models (trained with grid search)
-    with open(os.path.join(data_dir, "gbm_model.pkl"), 'rb') as f:
-        main_model = pickle.load(f)
+    main_model = joblib.load(os.path.join(data_dir, "gbm_model_python.pkl"))
     
     with open(os.path.join(data_dir, "gbm_model_trt.pkl"), 'rb') as f:
         therapy_models = pickle.load(f)
@@ -41,7 +42,8 @@ def load_models_and_data():
         lime_config = pickle.load(f)
     
     # Load data from app data directory
-    train_impute = pd.read_csv(os.path.join(data_dir, "train_impute.csv"))
+    train_impute = pd.read_csv(os.path.join(data_dir, "train_impute_python.csv"))
+    
     train_new = pd.read_csv(os.path.join(data_dir, "train_new.csv"))
     var_names = pd.read_csv(os.path.join(data_dir, "var_names.csv"))
     
@@ -57,8 +59,10 @@ def load_models_and_data():
 # Load all data at startup
 main_model, therapy_models, lime_config, train_impute, train_new, var_names, trt_groups, feature_importance = load_models_and_data()
 
-# Create feature columns list (matching R training) - exclude patient_id, pep, and therapy
-feature_cols = [col for col in train_impute.columns if col not in ['patient_id', 'pep']]
+# Create feature columns list (matching R training) - exclude patient_id, pep, type_of_sod, and therapy
+# IMPORTANT: Excluding 'type_of_sod' per R implementation: "high missingness and redundancy with sod"
+exclude_cols = ['patient_id', 'pep', 'type_of_sod', 'study_id', 'study', 'pep_severity']
+feature_cols = [col for col in train_impute.columns if col not in exclude_cols]
 
 print(f"Feature columns: {feature_cols}")
 print(f"Number of features: {len(feature_cols)}")
@@ -307,30 +311,57 @@ def create_input_dataframe(age_years, gender_male_1, bmi, sod, history_of_pep,
     for therapy, (ah, indo, stent) in therapy_configs.items():
         row_data = base_data.copy()
         row_data.update({
-            'aggressive_hydration': ah,
-            'indomethacin_nsaid_prophylaxis': indo,
-            'pancreatic_duct_stent_placement': stent,
+            'intensive_hydration': ah,  # aggressive_hydration -> intensive_hydration
+            'nsaid_use': indo,  # indomethacin_nsaid_prophylaxis -> nsaid_use
+            'pd_stent': stent,  # pancreatic_duct_stent_placement -> pd_stent
             'therapy': therapy
         })
+        
+        #?? Add any missing features with default values of 0
+        for col in feature_cols:
+            if col not in row_data:
+                row_data[col] = 0
+                
         therapy_data.append(row_data)
     
     return pd.DataFrame(therapy_data)
 
 def normalize_patient_data(input_df):
-    """Normalize patient data using training set statistics"""
-    # Get the feature columns used in training (excluding target, id, and therapy columns)
-    feature_columns = [col for col in train_impute.columns if col not in ['patient_id', 'pep']]
+    """Normalize patient data using training set statistics (R-exact method)"""
+    # Clean input data first - convert any '.' values to NaN, then to numeric
+    input_cleaned = input_df.copy()
     
-    # Create scaler fitted on training data
+    for col in input_cleaned.columns:
+        if col in feature_cols:  # Only process feature columns
+            # Replace '.' with NaN first, then convert to numeric
+            input_cleaned[col] = input_cleaned[col].replace('.', np.nan)
+            input_cleaned[col] = pd.to_numeric(input_cleaned[col], errors='coerce')
+    
+    # Create scaler fitted on training data (using only the validated feature columns)
     scaler = StandardScaler()
-    scaler.fit(train_impute[feature_columns])
+    scaler.fit(train_impute[feature_cols])
     
-    # Normalize the input data (only the feature columns that exist in training)
-    input_normalized = input_df.copy()
+    # Normalize the input data (only the feature columns that exist in both)
+    input_normalized = input_cleaned.copy()
     
     # Only normalize columns that exist in both input and training data
-    columns_to_normalize = [col for col in feature_columns if col in input_df.columns]
-    input_normalized[columns_to_normalize] = scaler.transform(input_df[columns_to_normalize])
+    columns_to_normalize = [col for col in feature_cols if col in input_cleaned.columns]
+    
+    if len(columns_to_normalize) > 0:
+        input_normalized[columns_to_normalize] = scaler.transform(input_cleaned[columns_to_normalize])
+    
+    # Step 3: KNN imputation (k=10) - matching R exactly
+    imputer = KNNImputer(n_neighbors=10)
+    # Fit imputer on training data
+    imputer.fit(train_impute[feature_cols])
+    # Apply to input data
+    if len(columns_to_normalize) > 0:
+        input_normalized[columns_to_normalize] = imputer.transform(input_normalized[columns_to_normalize])
+    
+    # Verify no string values remain in feature columns
+    string_check = input_normalized[columns_to_normalize].select_dtypes(include=['object']).shape[1]
+    if string_check > 0:
+        print(f"⚠️  WARNING: {string_check} string columns remain after normalization")
     
     return input_normalized
 
@@ -350,9 +381,9 @@ def predict_with_therapy_adjustment(input_df_normalized):
             # For treatments, use therapy-specific adjustment
             # First get baseline prediction (no treatment version)
             baseline_row = row.copy()
-            baseline_row['aggressive_hydration'] = 0
-            baseline_row['indomethacin_nsaid_prophylaxis'] = 0
-            baseline_row['pancreatic_duct_stent_placement'] = 0
+            baseline_row['intensive_hydration'] = 0  # aggressive_hydration -> intensive_hydration
+            baseline_row['nsaid_use'] = 0  # indomethacin_nsaid_prophylaxis -> nsaid_use
+            baseline_row['pd_stent'] = 0  # pancreatic_duct_stent_placement -> pd_stent
             
             X_baseline = baseline_row[feature_cols].values.reshape(1, -1)
             baseline_pred = main_model.predict_proba(X_baseline)[0, 1]
@@ -372,7 +403,7 @@ def predict_with_therapy_adjustment(input_df_normalized):
                 if therapy == "Aggressive hydration and indomethacin":
                     # First adjust for aggressive hydration
                     ah_row = baseline_row.copy()
-                    ah_row['aggressive_hydration'] = 1
+                    ah_row['intensive_hydration'] = 1  # aggressive_hydration -> intensive_hydration
                     X_ah = ah_row[feature_cols].values.reshape(1, -1)
                     
                     p3 = therapy_models["Aggressive hydration only"].predict_proba(X_baseline)[0, 1]
@@ -417,9 +448,9 @@ def find_nearest_neighbors(input_df_normalized, n_neighbors=20):
     for therapy, (ah, indo, stent) in treatment_subsets.items():
         # Filter training data for this therapy subset
         subset_mask = (
-            (train_impute['aggressive_hydration'] == ah) &
-            (train_impute['indomethacin_nsaid_prophylaxis'] == indo) &
-            (train_impute['pancreatic_duct_stent_placement'] == stent)
+            (train_impute['intensive_hydration'] == ah) &  # aggressive_hydration -> intensive_hydration
+            (train_impute['nsaid_use'] == indo) &  # indomethacin_nsaid_prophylaxis -> nsaid_use
+            (train_impute['pd_stent'] == stent)  # pancreatic_duct_stent_placement -> pd_stent
         )
         subset_train = train_impute[subset_mask].copy()
         

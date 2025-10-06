@@ -8,7 +8,7 @@
 library(pacman)
 p_load(shiny, shinythemes, shinyWidgets, shinycssloaders, tidyverse, ggrepel,
        janitor, caret, FNN, here, lime)
-source(here("../code/my_plot_lime_features.R"))
+source(here("code/my_plot_lime_features.R"))
 
 # Define UI for application
 ui <- navbarPage("", id = "navbar",

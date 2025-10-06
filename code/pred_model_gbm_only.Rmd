@@ -19,9 +19,13 @@ p_load(janitor, tidyverse, here, skimr, naniar, readxl, caret, gbm, ROCR, FNN, g
 ```
 
 # Read data
+```{r display_raw_data}
+dt_raw = suppressWarnings(read_excel(here("../data", "Combined sheet final December.xlsx"), col_types = "numeric")) # NOTE EMILY: "here" means THIS file's location, which is pep_risk-master/code
+skim(dt_raw)
+```
 
 ```{r clean_data}
-dt_raw = suppressWarnings(read_excel(here("../../data", "Combined sheet final December.xlsx"), col_types = "numeric")) # NOTE EMILY: "here" means THIS file's location, which is pep_risk-master/code
+dt_raw = suppressWarnings(read_excel(here("../data", "Combined sheet final December.xlsx"), col_types = "numeric")) # NOTE EMILY: "here" means THIS file's location, which is pep_risk-master/code
 #albert: dt_raw = suppressWarnings(read_excel(here("data", "Combined sheet final December.xlsx"), col_types = "numeric"))
 
 # Clean variable names
@@ -93,9 +97,9 @@ dt = dt %>%
 I create dummy variables for categorical features. There is only 1 such feature (`type_of_sod`). However, due to high missingness and redundancy with `sod`, I will remove `type_of_sod`.
 
 ```{r}
-
 dt = dt %>%
   select(-type_of_sod)
+names(dt)
 ```
 
 
@@ -117,6 +121,7 @@ For now, I've chosen to remove the `pancreatic_duct_brush_cytology` and `pancrea
 ```{r}
 dt = dt %>%
   select(-c("pancreatic_duct_brush_cytology", "pancreas_divisum"))
+names(dt)
 ```
 ######################## IMPUTATION ####################################
 ## Imputation
@@ -147,19 +152,9 @@ A couple of important notes:
 * We need to define the training and test set first before imputation, since we only want to impute from the samples in the training set. 
 * When we impute, be sure to exclude `study_id` and `pep` (by default, as they are both factor variables, they should be excluded by the imputation function). There is no information in the numeric value of `study_id`. And we do not want to infer missing values from their relationship to `pep` as that would overinflate prediction results in the test set.
 
-```{r}
-# Imputation
-set.seed(1)
-test_index <- createFolds(dt$pep, k = 5, list = TRUE)
-
-dt = dt %>%
-  mutate(patient_id = 1:n()) # Keep track of patients
-train = dt %>% slice(-test_index$Fold1) %>% as.data.frame()
-test = dt %>% slice(test_index$Fold1) %>% as.data.frame()
-```
 
 ```{r}
-# Imputation
+# Imputation function
 # If new_dataset == T, the test set has no study ID
 impute_values = function(train, test, new_dataset = F){
   # Step 1
@@ -181,7 +176,7 @@ impute_values = function(train, test, new_dataset = F){
   train_impute_step1 <- predict(pre_proc_values, train_impute_step1)
   test_impute_step1 <- predict(pre_proc_values, test_impute_step1)
   
-  
+  #* Step 2 -> Step 3  - this seems dumb but ok
   train_impute_step2 = train_impute_step1
   test_impute_step2 = test_impute_step1
   
@@ -203,13 +198,39 @@ impute_values = function(train, test, new_dataset = F){
   out = list(train = train, test = test)
   return(out)
 }
+```
+
+```{r}
+# Imputation testing
+set.seed(1)
+test_index <- createFolds(dt$pep, k = 5, list = TRUE)
+
+dt = dt %>%
+  mutate(patient_id = 1:n()) # Keep track of patients
+train = dt %>% slice(-test_index$Fold1) %>% as.data.frame()
+test = dt %>% slice(test_index$Fold1) %>% as.data.frame()
+
+#* Print number of rows in train and test
+cat("Train rows:", nrow(train), "\n")
+cat("Test rows:", nrow(test), "\n")
+
+#* Print summary statistics before imputation
+cat("Summary statistics BEFORE imputation:\n")
+skim(train)
+skim(test)
 
 imputed = impute_values(train, test)
 train = imputed$train
-test = imputed$test #!
+test = imputed$test
+```
+```{r}
+#* After imputation
+cat("Summary statistics AFTER imputation:\n")
+skim(imputed$train)
+skim(imputed$test)
 ```
 
-@@@@@@@@@@@@@@@@@@@@ Check imputed data's stats for comparison with python. looks ok
+@@@@@@@@@@@@@@@@@@@@ Check stats of imputed data on whole dataset
 ```{r}
 dt_imputed = suppressWarnings(read_rds(here("../pep_risk_app/data", "train_impute.rds")))
 skim(dt_imputed)
@@ -225,6 +246,7 @@ We label patients that were randomized for each treatment.
 4. Pancreatic duct stent - include only studies where pancreatic stent was given to at least 1 patient (**note: always given at doctor's discretion and not randomized**)
 
 ```{r}
+#***?? I think this is used much later on for training on specific therapy groups??
 old_dat = read_csv(here("../../data/Risk Factors INDIEH Elmunzer Luo version Albert.csv")) # To extract high_risk column for study 3
 # Luo dataset (study_id == "2" in new datasheet, but study_id == "3" in old_dat)
 study_3 = old_dat %>%
@@ -246,6 +268,8 @@ saveRDS(trt_randomized_groups, here("../../data/trt_randomized_groups.rds"))
 no_trt_patients = dt %>% filter(!(indomethacin_nsaid_prophylaxis == 1 | aggressive_hydration == 1 | pancreatic_duct_stent_placement == 1)) %>% pull(patient_id)
 ```
 
+
+
 # Train prediction model
 
 ## Feature selection
@@ -262,15 +286,6 @@ Note that the following are clinically important features:
 8. `pb_mal` 
 
 Currently, we're not aiming to do feature selection (performance is more important when we validate our model). We can reduce the number of features when it gets to clinical care. 
-
-```{r}
-# Set sampling scheme
-fitControl <- trainControl(method = "repeatedcv",
-                           number = 5,
-                           repeats = 1)
-
-set.seed(1)
-```
 
 ```{r}
 # Helper function to calculate AUC, FPR, TPR, NPV, PPV, and ACC
@@ -297,6 +312,7 @@ I predict under 5-fold CV (training 5 models and predicting under held-out test 
 
 ```{r}
 # Set sampling scheme
+#* one repeat and no tuning grid defined, so effective training is just a single fit
 fitControl <- trainControl(method = "repeatedcv",
                            number = 5,
                            repeats = 1)
@@ -309,13 +325,13 @@ set.seed(1)
 
 ```{r eval = T}
 set.seed(229)
-test_index <- createFolds(dt$pep, k = 5, list = TRUE)
+test_index <- createFolds(dt$pep, k = 5, list = TRUE) #* Creates stratified folds on the target pep. Returns a list of 5 integer vectors, each containing row indices for one fold’s test set
 pred_dt_ls = vector("list", 5)
 
 tic("gbm")
 for(i in 1:5){
-  train = dt %>% slice(-test_index[[i]]) %>% as.data.frame()
-  test = dt %>% slice(test_index[[i]]) %>% as.data.frame()
+  test = dt %>% slice(test_index[[i]]) %>% as.data.frame() #* selects the rows for this fold’s test set
+  train = dt %>% slice(-test_index[[i]]) %>% as.data.frame() #*selects all rows except the test indices
   
   # Impute values
   imputed = impute_values(train, test)
@@ -325,7 +341,7 @@ for(i in 1:5){
   # Train model
   fit = train(pep ~ ., data = train %>% select(-patient_id), 
               method = "gbm", 
-              trControl = fitControl,
+              trControl = fitControl, #* train with 5-fold CV within the training set
               verbose = FALSE,
               metric = "Kappa")  # metric for selecting tuning parameters
   
@@ -336,7 +352,7 @@ for(i in 1:5){
 }
 toc()
 
-pred_dt = bind_rows(pred_dt_ls)  #* BOOSTED TREE ***
+pred_dt = bind_rows(pred_dt_ls)  #* concatenates the results from all folds
 saveRDS(pred_dt, here("../pep_risk_app", "data", "pred_dt_gbm.rds")) #?????? this is commented out in app.R... uses gbm_model.rds instead??
 
 library(pROC)   # EMILY EVAL
